@@ -8,8 +8,12 @@
 package io.fabric8.launcher.addon;
 
 import io.openshift.booster.catalog.BoosterCatalog;
+import org.arquillian.smart.testing.rules.git.server.GitServer;
 import org.junit.Before;
+import org.junit.ClassRule;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.contrib.java.lang.system.ProvideSystemProperty;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -20,9 +24,18 @@ public class BoosterCatalogFactoryTest {
 
     private BoosterCatalogFactory factory;
 
+    @ClassRule
+    public static GitServer gitServer = GitServer.fromBundle("booster-catalog", "repos/boosters/booster-catalog.bundle")
+       .usingPort(8765)
+       .create();
+
+    @Rule
+    public final ProvideSystemProperty boosterCatalogProperties =
+       new ProvideSystemProperty(BoosterCatalogFactory.LAUNCHER_CATALOG_REF, "openshift-online-free")
+          .and("LAUNCHER_BOOSTER_CATALOG_REPOSITORY", "http://localhost:8765/booster-catalog");
+
     @Before
     public void setUp() {
-        System.setProperty(BoosterCatalogFactory.LAUNCHER_CATALOG_REF, "openshift-online-free");
         factory = new BoosterCatalogFactory();
         // Forcing CDI initialization here
         factory.reset();
@@ -37,8 +50,7 @@ public class BoosterCatalogFactoryTest {
 
     @Test
     public void testMasterCatalogIsNotSameAsDefault() {
-        // A null catalogURL means use default repository URL
-        BoosterCatalog masterService = factory.getCatalog(null, "master");
+        BoosterCatalog masterService = factory.getCatalog("http://localhost:8765/booster-catalog", "master");
         assertThat(masterService).isNotNull();
         assertThat(factory.getDefaultCatalog()).isNotSameAs(masterService);
     }
